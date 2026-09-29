@@ -35,6 +35,10 @@ app.use('/api/admin', adminRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`API running on http://localhost:${config.port}`);
-});
+if (require.main === module) {
+  app.listen(config.port, () => {
+    console.log(`API running on http://localhost:${config.port}`);
+  });
+}
+
+module.exports = app;
