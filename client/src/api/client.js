@@ -25,8 +25,17 @@ api.interceptors.response.use(
   }
 );
 
-// Turns "/uploads/abc.jpg" into a full URL for <img src>
-export const fileUrl = (path) => (path ? `${API_URL}${path}` : '');
+// Converts legacy relative upload paths to the backend URL,
+// while leaving absolute URLs (such as Supabase Storage URLs) unchanged.
+export const fileUrl = (path) => {
+  if (!path) return '';
+
+  if (/^https?:\/\//i.test(path)) {
+    return path;
+  }
+
+  return `${API_URL}${path}`;
+};
 
 export const errorMessage = (err) =>
   err.response?.data?.message || 'Cannot reach the server. Check that the backend is running.';
