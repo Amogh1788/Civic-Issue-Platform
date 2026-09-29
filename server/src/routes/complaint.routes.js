@@ -1,11 +1,12 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const pool = require('../db/pool');
 const { requireAuth, requireRole } = require('../middleware/auth');
-const { upload, UPLOAD_DIR } = require('../middleware/upload');
+const { upload } = require('../middleware/upload');
 const { asyncHandler, httpError } = require('../middleware/errorHandler');
 const { CATEGORIES } = require('../utils/constants');
+const {
+  uploadComplaintPhoto
+} = require('../services/storage');
 const {
   findDuplicateParent,
   recalcPriority,
@@ -18,9 +19,6 @@ const router = express.Router();
 router.use(requireAuth);
 
 // Delete an uploaded file when the request fails validation
-function removeUpload(file) {
-  if (file) fs.unlink(path.join(UPLOAD_DIR, file.filename), () => {});
-}
 
 function parseId(value) {
   const id = Number(value);
@@ -49,7 +47,7 @@ router.post(
           !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
         throw httpError(400, 'Add the location of the issue');
       }
-
+      const photoUrl = await uploadComplaintPhoto(req.file);
       const result = await withTransaction(async (db) => {
         const parent = await findDuplicateParent(db, { category, latitude, longitude });
 
@@ -67,7 +65,7 @@ router.post(
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
            RETURNING *`,
           [
-            id, code, req.user.id, category, description, `/uploads/${req.file.filename}`,
+            id, code, req.user.id, category, description, photoUrl,
             latitude, longitude, address || null, status,
             parent ? parent.department_id : null, parent ? parent.id : null,
           ]
@@ -92,9 +90,8 @@ router.post(
 
       res.status(201).json(result);
     } catch (err) {
-      removeUpload(req.file);
-      throw err;
-    }
+  throw err;
+}
   })
 );
 
